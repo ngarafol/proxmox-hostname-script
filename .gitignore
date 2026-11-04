@@ -1,0 +1,3 @@
+# Keep local notes out of git; README.md is the only tracked markdown file.
+*.md
+!README.md

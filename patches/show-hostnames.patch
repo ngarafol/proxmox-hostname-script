@@ -1,0 +1,31 @@
+diff --git a/PVE/API2/Cluster.pm b/PVE/API2/Cluster.pm
+--- a/PVE/API2/Cluster.pm
++++ b/PVE/API2/Cluster.pm
+@@ -551,7 +551,7 @@
+ 
+         # we try to generate 'numbers' by using "$X + 0"
+         if (!$param->{type} || $param->{type} eq 'vm') {
+-            my $prop_list = [qw(lock tags)];
++            my $prop_list = [qw(lock tags name hostname)];
+             my $props = PVE::Cluster::get_guest_config_properties($prop_list);
+ 
+             for my $vmid (sort keys %$idlist) {
+@@ -588,10 +588,18 @@
+                 next if !$rpcenv->check($authuser, "/vms/$vmid", ['VM.Audit'], 1);
+ 
+                 for my $prop (@$prop_list) {
++                    # 'hostname' is the LXC equivalent of QEMU's 'name', handled below
++                    next if $prop eq 'hostname';
+                     if (defined(my $value = $props->{$vmid}->{$prop})) {
+                         $entry->{$prop} = $value;
+                     }
+                 }
++
++                # The name from RRD data is only refreshed while the guest's node is
++                # online; pmxcfs expires stale RRD entries after 5 minutes. Guest configs
++                # are replicated cluster-wide and also present while a node is down, so
++                # fall back to them (LXC stores the name in 'hostname').
++                $entry->{name} //= $props->{$vmid}->{ $entry->{type} eq 'lxc' ? 'hostname' : 'name' };
+ 
+                 if (
+                     defined($entry->{pool})
